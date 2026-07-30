@@ -26,6 +26,7 @@ export interface Transaction {
 
 export function FundManagement() {
   const { t } = useTranslation();
+  const { language } = useAppStore();
   const { user } = useAppStore();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -247,7 +248,7 @@ export function FundManagement() {
                   filtered.map((trx) => (
                     <tr key={trx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                       <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
-                        {format(new Date(trx.date), 'dd MMM yyyy')}
+                        {formatDate(new Date(trx.date).getTime(), language)}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${

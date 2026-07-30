@@ -7,9 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Input } from '../../components/ui/Input';
 import { History, Search, FileText } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatDate } from '../../lib/utils';
+import { useAppStore } from '../../store';
 
 export function AuditLogs() {
   const { t } = useTranslation();
+  const { language } = useAppStore();
   const [logs, setLogs] = useState<(AuditLog & { userName?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -99,7 +102,7 @@ export function AuditLogs() {
                   filteredLogs.map((log) => (
                     <tr key={log.logId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                       <td className="px-6 py-4 whitespace-nowrap text-slate-500">
-                        {format(log.timestamp, 'dd MMM yyyy, hh:mm a')}
+                        {formatDate(log.timestamp, language, true)}
                       </td>
                       <td className="px-6 py-4 font-medium">
                         {log.userName}

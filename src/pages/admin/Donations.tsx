@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Search, CheckCircle, XCircle, Printer } from 'lucide-react';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import { formatCurrency, formatDate, formatMonths } from '../../lib/utils';
 import { useAppStore } from '../../store';
 
 export function AdminDonations() {
@@ -48,6 +48,7 @@ export function AdminDonations() {
         return {
           ...col,
           donorName: donors.find(d => d.donorId === col.donorId)?.donorName || 'Unknown',
+          donorNameBn: donors.find(d => d.donorId === col.donorId)?.donorNameBn || '',
           teacherName: teachers.find(t => t.teacherId === col.teacherId)?.teacherName || 'Unknown'
         };
       });
@@ -195,7 +196,7 @@ export function AdminDonations() {
                         {formatDate(c.paymentDate, language)}
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
-                        {c.donorName}
+                        {language === 'bn' && (c as any).donorNameBn ? (c as any).donorNameBn : c.donorName}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
                         {c.teacherName}
@@ -204,7 +205,7 @@ export function AdminDonations() {
                         {formatCurrency(c.paymentAmount, language)}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
-                         {c.coveredMonths?.join(', ') || '-'}
+                         {formatMonths(c.coveredMonths || [], language)}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -275,9 +276,9 @@ export function AdminDonations() {
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
                     </div>
                   )}
-                  <h1 className="text-3xl font-bold">{settings?.madrasaName || 'Madrasa Name'}</h1>
+                  <h1 className="text-3xl font-bold">{receiptLang === "bn" ? (settings?.madrasaNameBn || settings?.madrasaName || "মাদ্রাসাতুল মদিনা") : (settings?.madrasaName || "Madrasa Name")}</h1>
                 </div>
-                <p className="text-sm mb-1">{settings?.address}</p>
+                <p className="text-sm mb-1">{receiptLang === "bn" ? (settings?.addressBn || settings?.address || "ঢাকা, বাংলাদেশ") : (settings?.address || "Address")}</p>
                 {(settings?.phone || settings?.email) && (
                   <p className="text-xs mb-3">{settings?.phone} {settings?.phone && settings?.email ? '|' : ''} {settings?.email}</p>
                 )}
@@ -297,7 +298,7 @@ export function AdminDonations() {
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-slate-500">{receiptLang === "en" ? "Donor Name:" : "দাতার নাম:"}</span>
-                  <span className="font-medium">{receiptModal.donorName}</span>
+                  <span className="font-medium">{receiptLang === "bn" && (receiptModal as any).donorNameBn ? (receiptModal as any).donorNameBn : receiptModal.donorName}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-slate-500">{receiptLang === "en" ? "Amount Received:" : "জমা পরিমাণ:"}</span>
@@ -309,7 +310,7 @@ export function AdminDonations() {
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-slate-500">{receiptLang === "en" ? "Covered Months:" : "প্রদত্ত মাস:"}</span>
-                  <span className="font-medium">{receiptModal.coveredMonths?.join(', ') || '-'}</span>
+                  <span className="font-medium">{formatMonths(receiptModal.coveredMonths || [], receiptLang)}</span>
                 </div>
               </div>
               

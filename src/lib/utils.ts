@@ -9,14 +9,16 @@ export function generateId() {
   return Math.random().toString(36).substring(2, 9);
 }
 
-export function formatDate(timestamp: number, language: 'en' | 'bn' = 'en') {
+export function formatDate(timestamp: number, language: 'en' | 'bn' = 'en', includeTime: boolean = false) {
   const date = new Date(timestamp);
   // Basic formatting, could be expanded
-  return new Intl.DateTimeFormat(language === 'bn' ? 'bn-BD' : 'en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  }).format(date);
+  const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+  if (includeTime) {
+    options.hour = 'numeric';
+    options.minute = 'numeric';
+    options.hour12 = true;
+  }
+  return new Intl.DateTimeFormat(language === 'bn' ? 'bn-BD' : 'en-US', options).format(date);
 }
 
 export function formatCurrency(amount: number, language: 'en' | 'bn' = 'en') {
@@ -32,3 +34,18 @@ export const toBnNum = (num: number | string | undefined | null, lang: 'en' | 'b
   if (lang === 'en') return String(num);
   return String(num).replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d as any]);
 };
+
+export function formatMonths(months: string[], language: 'en' | 'bn' = 'en') {
+  if (!months || months.length === 0) return '-';
+  const formatter = new Intl.DateTimeFormat(language === 'bn' ? 'bn-BD' : 'en-US', {
+    month: 'short',
+    year: 'numeric'
+  });
+  return months.map(m => {
+    try {
+      return formatter.format(new Date(m + '-01'));
+    } catch (e) {
+      return m;
+    }
+  }).join(', ');
+}

@@ -28,6 +28,7 @@ export function Donors() {
   // Form state
   const [formData, setFormData] = useState({
     donorName: '',
+    donorNameBn: '',
     mobile: '',
     address: '',
     monthlyDonation: 0,
@@ -67,6 +68,7 @@ export function Donors() {
       setEditingDonor(d);
       setFormData({
         donorName: d.donorName,
+        donorNameBn: (d as any).donorNameBn || '',
         mobile: d.mobile || '',
         address: d.address || '',
         monthlyDonation: d.monthlyDonation,
@@ -78,6 +80,7 @@ export function Donors() {
       setEditingDonor(null);
       setFormData({
         donorName: '',
+        donorNameBn: '',
         mobile: '',
         address: '',
         monthlyDonation: 0,
@@ -121,6 +124,7 @@ export function Donors() {
         
         await updateDoc(doc(db, 'donors', editingDonor.donorId), {
           donorName: formData.donorName,
+          donorNameBn: formData.donorNameBn,
           mobile: formData.mobile,
           address: formData.address,
           monthlyDonation: numAmount,
@@ -132,6 +136,7 @@ export function Donors() {
       } else {
         const newDonor = {
           donorName: formData.donorName,
+          donorNameBn: formData.donorNameBn,
           mobile: formData.mobile,
           address: formData.address,
           monthlyDonation: numAmount,
@@ -213,7 +218,7 @@ export function Donors() {
                   filteredDonors.map((d) => (
                     <tr key={d.donorId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                       <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
-                        {d.donorName}
+                        {language === 'bn' && (d as any).donorNameBn ? (d as any).donorNameBn : d.donorName}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
                         {d.mobile || '-'}
@@ -259,13 +264,24 @@ export function Donors() {
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t.name || 'Donor Name'} <span className="text-red-500">*</span></label>
-                  <Input 
-                    required 
-                    value={formData.donorName}
-                    onChange={e => setFormData({...formData, donorName: e.target.value})}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t.name || 'Donor Name'} <span className="text-red-500">*</span></label>
+                    <Input 
+                      required 
+                      value={formData.donorName}
+                      onChange={e => setFormData({...formData, donorName: e.target.value})}
+                      placeholder="e.g. John Doe"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Name (Bangla)</label>
+                    <Input 
+                      value={formData.donorNameBn}
+                      onChange={e => setFormData({...formData, donorNameBn: e.target.value})}
+                      placeholder="উদাঃ জন ডো"
+                    />
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">

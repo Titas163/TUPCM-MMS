@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Search, Plus, Calendar as CalendarIcon, CheckCircle, Clock, Edit2, XCircle, Printer } from 'lucide-react';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import { formatCurrency, formatDate, formatMonths } from '../../lib/utils';
 import { useAppStore } from '../../store';
 import { generateLedger, MonthLedger, calculateDonorSummary, DonorSummary } from '../../lib/donationUtils';
 
@@ -306,13 +306,13 @@ export function TeacherDonations() {
                         {formatDate(c.paymentDate, language)}
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
-                        {donorMap[c.donorId]?.donorName || 'Unknown Donor'}
+                        {language === 'bn' && donorMap[c.donorId]?.donorNameBn ? donorMap[c.donorId]?.donorNameBn : (donorMap[c.donorId]?.donorName || 'Unknown Donor')}
                       </td>
                       <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 font-bold">
                         {formatCurrency(c.paymentAmount, language)}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
-                        {c.coveredMonths?.join(', ') || '-'}
+                        {formatMonths(c.coveredMonths || [], language)}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -375,7 +375,7 @@ export function TeacherDonations() {
                       >
                         <option value="" disabled>Select a donor</option>
                         {donors.map(d => (
-                          <option key={d.donorId} value={d.donorId}>{d.donorName} ({formatCurrency(d.monthlyDonation, language)}/mo)</option>
+                          <option key={d.donorId} value={d.donorId}>{language === 'bn' && d.donorNameBn ? d.donorNameBn : d.donorName} ({formatCurrency(d.monthlyDonation, language)}/mo)</option>
                         ))}
                       </Select>
                     </div>
@@ -511,9 +511,9 @@ export function TeacherDonations() {
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
                     </div>
                   )}
-                  <h1 className="text-3xl font-bold">{settings?.madrasaName || 'Madrasa Name'}</h1>
+                  <h1 className="text-3xl font-bold">{receiptLang === "bn" ? (settings?.madrasaNameBn || settings?.madrasaName || "মাদ্রাসাতুল মদিনা") : (settings?.madrasaName || "Madrasa Name")}</h1>
                 </div>
-                <p className="text-sm mb-1">{settings?.address}</p>
+                <p className="text-sm mb-1">{receiptLang === "bn" ? (settings?.addressBn || settings?.address || "ঢাকা, বাংলাদেশ") : (settings?.address || "Address")}</p>
                 {(settings?.phone || settings?.email) && (
                   <p className="text-xs mb-3">{settings?.phone} {settings?.phone && settings?.email ? '|' : ''} {settings?.email}</p>
                 )}
@@ -533,7 +533,7 @@ export function TeacherDonations() {
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-slate-500">{receiptLang === "en" ? "Donor Name:" : "দাতার নাম:"}</span>
-                  <span className="font-medium">{donorMap[receiptModal.donorId]?.donorName}</span>
+                  <span className="font-medium">{receiptLang === "bn" && donorMap[receiptModal.donorId]?.donorNameBn ? donorMap[receiptModal.donorId]?.donorNameBn : donorMap[receiptModal.donorId]?.donorName}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-slate-500">{receiptLang === "en" ? "Amount Received:" : "জমা পরিমাণ:"}</span>
@@ -545,7 +545,7 @@ export function TeacherDonations() {
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-slate-500">{receiptLang === "en" ? "Covered Months:" : "প্রদত্ত মাস:"}</span>
-                  <span className="font-medium">{receiptModal.coveredMonths?.join(', ') || '-'}</span>
+                  <span className="font-medium">{formatMonths(receiptModal.coveredMonths || [], receiptLang)}</span>
                 </div>
               </div>
               

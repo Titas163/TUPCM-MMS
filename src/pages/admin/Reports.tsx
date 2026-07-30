@@ -536,9 +536,9 @@ export function Reports() {
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
                   </div>
                 )}
-                <h1 className="text-3xl font-bold">{settings?.madrasaName || 'মাদ্রাসাতুল মদিনা'}</h1>
+                <h1 className="text-3xl font-bold">{reportLang === "bn" ? (settings?.madrasaNameBn || settings?.madrasaName || "মাদ্রাসাতুল মদিনা") : (settings?.madrasaName || "Madrasatul Madina")}</h1>
               </div>
-              <p className="text-sm mb-1">{settings?.address || 'ঢাকা, বাংলাদেশ'}</p>
+              <p className="text-sm mb-1">{reportLang === "bn" ? (settings?.addressBn || settings?.address || "ঢাকা, বাংলাদেশ") : (settings?.address || "Dhaka, Bangladesh")}</p>
               {(settings?.phone || settings?.email) && (
                 <p className="text-xs mb-3">{settings?.phone} {settings?.phone && settings?.email ? '|' : ''} {settings?.email}</p>
               )}
@@ -548,7 +548,7 @@ export function Reports() {
               </h2>
               
               <div className="mt-4 font-medium text-sm text-center">
-                <p><strong>{reportLang === "en" ? "Month:" : "মাস:"}</strong> {format(new Date(finReportData.month + '-01'), 'MMMM yyyy')}</p>
+                <p><strong>{reportLang === "en" ? "Month:" : "মাস:"}</strong> {new Intl.DateTimeFormat(reportLang === 'bn' ? 'bn-BD' : 'en-US', { month: 'long', year: 'numeric' }).format(new Date(finReportData.month + '-01'))}</p>
               </div>
             </div>
             
