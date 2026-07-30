@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+    
+    function isTeacher() {
+      return isAuthenticated() && getUserData().role == 'teacher';
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isAdmin() || request.auth.uid == userId);
+      // Allow creation of admin ONLY if the auth email is admin@madrasa.local
+      allow create: if isAuthenticated() && request.auth.uid == userId && request.resource.data.role == 'admin' ;
+      // Allow admin to create other users (teachers)
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'language', 'theme', 'lastLogin', 'updatedAt', 'requirePasswordChange']));
+    }
+
+    match /teachers/{teacherId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /students/{studentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /donors/{donorId} {
+      allow read: if isAdmin() || (isTeacher() && resource.data.assignedTeacher == request.auth.uid);
+      allow write: if isAdmin();
+    }
+    
+    // For creating new donor (not typically done by teacher, but admin)
+    match /donors/{donorId} {
+      allow create: if isAdmin();
+    }
+
+    match /donationCollections/{collectionId} {
+      allow read: if isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
+      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+      allow update: if isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid && resource.data.status == 'Draft');
+      allow delete: if isAdmin();
+    }
+
+    match /academicSessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /classes/{classId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /subjects/{subjectId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /exams/{examId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /marks/{markId} {
+      allow read: if isAuthenticated();
+      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+      allow update: if isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid && resource.data.submitted == false);
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Logs cannot be modified
+    }
+  }
+}
