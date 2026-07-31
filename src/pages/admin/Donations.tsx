@@ -99,7 +99,8 @@ export function AdminDonations() {
         c.donorId === formData.donorId &&
         c.paymentAmount === formData.paymentAmount &&
         new Date(c.paymentDate).toISOString().split('T')[0] === formData.paymentDate &&
-        c.status !== 'Void' && !c.isDeleted
+        c.status !== 'Void' && !c.isDeleted &&
+        c.collectionId !== (editingCol?.collectionId || '')
       );
       if (isDuplicate) {
         if (!window.confirm("Possible Duplicate Payment detected. Proceed?")) {

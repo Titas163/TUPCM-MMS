@@ -165,11 +165,18 @@ export function TeacherDonations() {
       alert("Cannot void an approved collection.");
       return;
     }
-    {
+    const reason = window.prompt("Please provide a reason for voiding this payment:");
+    if (!reason) {
+      alert("A reason is required to void.");
+      return;
+    }
+    if (window.confirm("Are you sure you want to void this payment? This action cannot be undone.")) {
       try {
         await updateDoc(doc(db, 'donationCollections', col.collectionId), {
           status: 'Void',
-          isDeleted: true,
+          voidReason: reason,
+          voidedAt: Date.now(),
+          voidedBy: user?.uid || 'teacher',
           updatedAt: Date.now()
         });
         fetchData();
@@ -193,17 +200,32 @@ export function TeacherDonations() {
     );
 
     if (isDuplicate) {
-      
+      if (!window.confirm("Possible duplicate payment detected. Proceed anyway?")) {
+        return;
+      }
     }
 
     try {
       const paymentDateNum = new Date(formData.paymentDate).getTime();
       
       if (editingCollection) {
+        const donor = donors.find(d => d.donorId === selectedDonor);
+        let updatedAllocations = formData.allocations;
+        if (donor) {
+           const existing = collectionsData.filter(c => c.donorId === selectedDonor && c.collectionId !== editingCollection.collectionId);
+           updatedAllocations = calculateAllocation(donor, Number(formData.paymentAmount), existing);
+        }
+
         await updateDoc(doc(db, 'donationCollections', editingCollection.collectionId), {
           ...formData,
+          donorId: selectedDonor,
+          paymentAmount: Number(formData.paymentAmount),
+          allocations: updatedAllocations,
           paymentDate: paymentDateNum,
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
+          previousAmount: editingCollection.paymentAmount,
+          correctedBy: user?.uid || 'teacher',
+          correctedAt: Date.now()
         });
       } else {
         const newCol: Omit<DonationCollection, 'collectionId'> = {
