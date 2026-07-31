@@ -179,7 +179,8 @@ export function calculateDonorSummary(donor: Donor, collections: DonationCollect
   
   let totalPending = pendingCols.reduce((sum, c) => sum + c.paymentAmount, 0);
   
-  let displayDue = Math.max(0, totalDue - totalPending);
+  // Do NOT subtract pending payments from actual due amounts
+  let displayDue = totalDue;
   
   let status: 'Paid' | 'Due' | 'Partial' | 'Advance' = 'Paid';
   if (displayDue > 0) {

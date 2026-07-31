@@ -463,7 +463,7 @@ export function TeacherDonations() {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedDonorForDetails(d)}>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedDonorForDetails({...d, teacherName: user?.fullName})}>
                               <Eye className="w-4 h-4 text-indigo-500 mr-2" /> View
                             </Button>
                           </td>

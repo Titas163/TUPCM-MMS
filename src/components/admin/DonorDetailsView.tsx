@@ -17,7 +17,7 @@ interface Props {
 }
 
 export function DonorDetailsView({ donor, onBack, readOnly = false }: Props) {
-  const { language } = useAppStore();
+  const { language, user } = useAppStore();
   const { t } = useTranslation();
   const [collections, setCollections] = useState<DonationCollection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,9 +27,14 @@ export function DonorDetailsView({ donor, onBack, readOnly = false }: Props) {
   useEffect(() => {
     async function fetchCols() {
       try {
-        const q = query(collection(db, 'donationCollections'), where('donorId', '==', donor.donorId));
+        let q;
+        if (user?.role === 'teacher') {
+          q = query(collection(db, 'donationCollections'), where('donorId', '==', donor.donorId), where('teacherId', '==', user.uid));
+        } else {
+          q = query(collection(db, 'donationCollections'), where('donorId', '==', donor.donorId));
+        }
         const snap = await getDocs(q);
-        const data = snap.docs.map(d => ({ ...d.data(), collectionId: d.id } as DonationCollection)).filter(c => !c.isDeleted);
+        const data = snap.docs.map(d => ({ ...(d.data() as any), collectionId: d.id } as DonationCollection)).filter(c => !c.isDeleted);
         // Sort by paymentDate descending
         data.sort((a, b) => b.paymentDate - a.paymentDate);
         setCollections(data);
