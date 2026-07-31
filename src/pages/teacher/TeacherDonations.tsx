@@ -11,7 +11,7 @@ import { Search, Plus, Calendar as CalendarIcon, CheckCircle, Clock, Edit2, XCir
 import { formatCurrency, formatDate, formatMonths } from '../../lib/utils';
 import { DonorDetailsView } from '../../components/admin/DonorDetailsView';
 import { useAppStore } from '../../store';
-import { generateLedger, MonthLedger, calculateDonorSummary, DonorSummary, calculateAllocation } from '../../lib/donationUtils';
+import { generateLedger, MonthLedger, calculateDonorSummary, DonorSummary, calculateAllocation, getCurrentMonthStr } from '../../lib/donationUtils';
 
 // Helper to generate a sequential or random receipt number
 const generateReceiptNumber = () => {
@@ -266,9 +266,18 @@ export function TeacherDonations() {
     return <DonorDetailsView donor={selectedDonorForDetails} onBack={() => setSelectedDonorForDetails(null)} readOnly={true} />;
   }
 
-  if (selectedDonorForDetails) {
-    return <DonorDetailsView donor={selectedDonorForDetails} onBack={() => setSelectedDonorForDetails(null)} readOnly={true} />;
-  }
+  const currentMonthStr = getCurrentMonthStr();
+  const currentMonthTotal = collectionsData
+    .filter(c => c.status === 'Approved' && !c.isDeleted)
+    .filter(c => {
+      const d = new Date(c.paymentDate);
+      const cMonth = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+      return cMonth === currentMonthStr;
+    })
+    .reduce((sum, c) => sum + c.paymentAmount, 0);
+  
+  const currentMonthCommission = currentMonthTotal * 0.20;
+
 
   return (
     <div className="space-y-6">
@@ -276,6 +285,34 @@ export function TeacherDonations() {
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
           Teacher Donations
         </h1>
+      </div>
+
+      
+      {/* Commission Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <Card className="bg-indigo-50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30 shadow-sm">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Current Month Collection</p>
+              <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{formatCurrency(currentMonthTotal, language)}</p>
+            </div>
+            <div className="p-3 bg-indigo-100 dark:bg-indigo-800/30 rounded-full">
+              <CheckCircle className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30 shadow-sm">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Your Commission (20%)</p>
+              <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(currentMonthCommission, language)}</p>
+            </div>
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-800/30 rounded-full">
+              <Users className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex border-b border-slate-200 dark:border-slate-800">
