@@ -8,7 +8,8 @@ import { Button } from '../../components/ui/Button';
 import { DeleteButton } from '../../components/ui/DeleteButton';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Search, Plus, Edit2 } from 'lucide-react';
+import { Search, Plus, Edit2, Eye } from 'lucide-react';
+import { DonorDetailsView } from '../../components/admin/DonorDetailsView';
 import { formatCurrency } from '../../lib/utils';
 import { useAppStore } from '../../store';
 import { getCurrentMonthStr } from '../../lib/donationUtils';
@@ -20,6 +21,7 @@ export function Donors() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedDonorForDetails, setSelectedDonorForDetails] = useState<(Donor & { teacherName?: string }) | null>(null);
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,7 +36,8 @@ export function Donors() {
     monthlyDonation: 0,
     assignedTeacher: '',
     status: 'active' as 'active' | 'inactive',
-    effectiveFromMonth: getCurrentMonthStr() // For new donors, it starts now
+    effectiveFromMonth: getCurrentMonthStr(), // For new donors, it starts now
+    joinMonth: ''
   });
 
   const fetchData = async () => {
@@ -74,7 +77,8 @@ export function Donors() {
         monthlyDonation: d.monthlyDonation,
         assignedTeacher: d.assignedTeacher,
         status: d.status,
-        effectiveFromMonth: getCurrentMonthStr()
+        effectiveFromMonth: getCurrentMonthStr(),
+        joinMonth: d.joinMonth || ''
       });
     } else {
       setEditingDonor(null);
@@ -86,7 +90,8 @@ export function Donors() {
         monthlyDonation: 0,
         assignedTeacher: teachers.length > 0 ? teachers[0].teacherId : '',
         status: 'active',
-        effectiveFromMonth: getCurrentMonthStr()
+        effectiveFromMonth: getCurrentMonthStr(),
+        joinMonth: getCurrentMonthStr()
       });
     }
     setIsModalOpen(true);
@@ -128,6 +133,7 @@ export function Donors() {
           mobile: formData.mobile,
           address: formData.address,
           monthlyDonation: numAmount,
+          joinMonth: formData.joinMonth || editingDonor.joinMonth,
           assignedTeacher: formData.assignedTeacher,
           status: formData.status,
           amountHistory: newHistory,
@@ -163,6 +169,10 @@ export function Donors() {
     d.donorName.toLowerCase().includes(search.toLowerCase()) || 
     (d.mobile && d.mobile.includes(search))
   );
+
+  if (selectedDonorForDetails) {
+    return <DonorDetailsView donor={selectedDonorForDetails} onBack={() => setSelectedDonorForDetails(null)} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -243,6 +253,9 @@ export function Donors() {
                           <Button variant="ghost" size="icon" onClick={() => handleOpenModal(d)} title="Edit">
                             <Edit2 className="w-4 h-4" />
                           </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setSelectedDonorForDetails(d)} title="View Details">
+                            <Eye className="w-4 h-4 text-indigo-500" />
+                          </Button>
                           <DeleteButton onConfirm={() => handleDelete(d.donorId)} />
                         </div>
                       </td>
@@ -305,18 +318,32 @@ export function Donors() {
                 </div>
                 
                 {/* Only show Effective From if editing amount or adding new */}
-                {(!editingDonor || editingDonor.monthlyDonation !== Number(formData.monthlyDonation)) && (
+                
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Effective From Month (YYYY-MM)</label>
+                    <label className="text-sm font-medium">Starting Month (YYYY-MM) <span className="text-red-500">*</span></label>
                     <Input 
                       type="month"
                       required
-                      value={formData.effectiveFromMonth}
-                      onChange={e => setFormData({...formData, effectiveFromMonth: e.target.value})}
+                      value={formData.joinMonth}
+                      onChange={e => setFormData({...formData, joinMonth: e.target.value})}
                     />
-                    <p className="text-xs text-slate-500">This will ensure old records don't get recalculated.</p>
+                    <p className="text-xs text-slate-500">When the donor started.</p>
                   </div>
-                )}
+                  {(!editingDonor || editingDonor.monthlyDonation !== Number(formData.monthlyDonation)) && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-indigo-600 dark:text-indigo-400">New Amount Effective Month</label>
+                      <Input 
+                        type="month"
+                        required
+                        value={formData.effectiveFromMonth}
+                        onChange={e => setFormData({...formData, effectiveFromMonth: e.target.value})}
+                      />
+                      <p className="text-xs text-slate-500">Only affects future.</p>
+                    </div>
+                  )}
+                </div>
+
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t.teachers || 'Assigned Teacher'} <span className="text-red-500">*</span></label>

@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Search, Plus, Calendar as CalendarIcon, CheckCircle, Clock, Edit2, XCircle, Printer } from 'lucide-react';
+import { Search, Plus, Calendar as CalendarIcon, CheckCircle, Clock, Edit2, XCircle, Printer, Users, Eye } from 'lucide-react';
 import { formatCurrency, formatDate, formatMonths } from '../../lib/utils';
+import { DonorDetailsView } from '../../components/admin/DonorDetailsView';
 import { useAppStore } from '../../store';
 import { generateLedger, MonthLedger, calculateDonorSummary, DonorSummary, calculateAllocation } from '../../lib/donationUtils';
 
@@ -24,6 +25,8 @@ export function TeacherDonations() {
   const [collectionsData, setCollectionsData] = useState<DonationCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'collections' | 'donors'>('collections');
+  const [selectedDonorForDetails, setSelectedDonorForDetails] = useState<Donor | null>(null);
   const [teacherId, setTeacherId] = useState<string>('');
   
   // Modal state
@@ -227,19 +230,75 @@ export function TeacherDonations() {
     }
   };
 
-  const filteredCols = collectionsData.filter(c => !c.isDeleted);
+  const filteredCols = collectionsData.filter(c => !c.isDeleted && (search === '' || c.receiptNumber?.toLowerCase().includes(search.toLowerCase()) || donorMap[c.donorId]?.donorName.toLowerCase().includes(search.toLowerCase())));
+  const filteredDonors = donors.filter(d => 
+    search === '' || 
+    d.donorName.toLowerCase().includes(search.toLowerCase()) || 
+    ((d as any).donorNameBn && (d as any).donorNameBn.includes(search)) || 
+    (d.mobile && d.mobile.includes(search))
+  );
+
+  if (selectedDonorForDetails) {
+    return <DonorDetailsView donor={selectedDonorForDetails} onBack={() => setSelectedDonorForDetails(null)} readOnly={true} />;
+  }
+
+  if (selectedDonorForDetails) {
+    return <DonorDetailsView donor={selectedDonorForDetails} onBack={() => setSelectedDonorForDetails(null)} readOnly={true} />;
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-          My Collections
+          Teacher Donations
         </h1>
-        <Button onClick={() => handleOpenModal()} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Plus className="w-4 h-4" />
-          Record Payment
-        </Button>
       </div>
+
+      <div className="flex border-b border-slate-200 dark:border-slate-800">
+        <button
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'collections' 
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' 
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
+          }`}
+          onClick={() => setActiveTab('collections')}
+        >
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            Collections
+          </div>
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'donors' 
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' 
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
+          }`}
+          onClick={() => setActiveTab('donors')}
+        >
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            My Donors
+          </div>
+        </button>
+      </div>
+
+      <div className={activeTab === 'collections' ? 'space-y-6' : 'hidden'}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              placeholder="Search collections..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+            />
+          </div>
+          <Button onClick={() => handleOpenModal()} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Plus className="w-4 h-4" />
+            Record Payment
+          </Button>
+        </div>
 
       <Card className="border-none shadow-md dark:bg-slate-900">
         <CardContent className="p-0">
@@ -324,6 +383,76 @@ export function TeacherDonations() {
           </div>
         </CardContent>
       </Card>
+      </div>
+
+      <div className={activeTab === 'donors' ? 'space-y-6' : 'hidden'}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              placeholder="Search donors by name or mobile..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+            />
+          </div>
+        </div>
+        <Card className="border-none shadow-md dark:bg-slate-900">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800">
+            <CardTitle>My Assigned Donors</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50">
+                  <tr>
+                    <th className="px-6 py-4 font-medium">Name</th>
+                    <th className="px-6 py-4 font-medium">Mobile</th>
+                    <th className="px-6 py-4 font-medium">Monthly</th>
+                    <th className="px-6 py-4 font-medium">Status</th>
+                    <th className="px-6 py-4 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredDonors.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                        No assigned donors found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredDonors.map(d => {
+                      const summary = calculateDonorSummary(d, collectionsData.filter(c => c.donorId === d.donorId));
+                      return (
+                        <tr key={d.donorId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                          <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{d.donorName}</td>
+                          <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{d.mobile || '-'}</td>
+                          <td className="px-6 py-4 text-slate-900 dark:text-white font-medium">{formatCurrency(d.monthlyDonation, language)}</td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              summary.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' :
+                              summary.status === 'Partial' ? 'bg-amber-100 text-amber-800' :
+                              summary.status === 'Due' ? 'bg-red-100 text-red-800' :
+                              'bg-teal-100 text-teal-800'
+                            }`}>
+                              {summary.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedDonorForDetails(d)}>
+                              <Eye className="w-4 h-4 text-indigo-500 mr-2" /> View
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Record Payment Modal */}
       {isModalOpen && (
