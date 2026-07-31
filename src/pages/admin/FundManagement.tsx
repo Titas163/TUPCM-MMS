@@ -11,6 +11,7 @@ import { DeleteButton } from '../../components/ui/DeleteButton';
 import { Search, Plus, Edit2, Wallet, ArrowDownRight, ArrowUpRight, DollarSign, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { DonationCollection } from '../../types';
+import { formatDate } from '../../lib/utils';
 
 export interface Transaction {
   id: string;
@@ -61,7 +62,7 @@ export function FundManagement() {
           category: 'Donation',
           amount: d.paymentAmount,
           date: d.paymentDate,
-          description: `Donation via ${d.paymentMethod} (Months: ${d.coveredMonths.join(', ') || 'N/A'})`,
+          description: `Donation via ${d.paymentMethod} (Allocations: ${d.allocations ? d.allocations.map(a => a.month).join(', ') : (d.coveredMonths ? d.coveredMonths.join(', ') : 'N/A')})`,
           recordedBy: d.teacherId,
           isDonation: true,
           receiptNumber: d.receiptNumber

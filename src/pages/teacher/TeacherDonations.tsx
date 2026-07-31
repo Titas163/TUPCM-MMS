@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { collection, getDocs, addDoc, updateDoc, doc, query, where, orderBy } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { Donor, DonationCollection } from '../../types';
+import { Donor, DonationCollection, DonationAllocation } from '../../types';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -10,7 +10,7 @@ import { Select } from '../../components/ui/Select';
 import { Search, Plus, Calendar as CalendarIcon, CheckCircle, Clock, Edit2, XCircle, Printer } from 'lucide-react';
 import { formatCurrency, formatDate, formatMonths } from '../../lib/utils';
 import { useAppStore } from '../../store';
-import { generateLedger, MonthLedger, calculateDonorSummary, DonorSummary } from '../../lib/donationUtils';
+import { generateLedger, MonthLedger, calculateDonorSummary, DonorSummary, calculateAllocation } from '../../lib/donationUtils';
 
 // Helper to generate a sequential or random receipt number
 const generateReceiptNumber = () => {
@@ -43,7 +43,7 @@ export function TeacherDonations() {
   // Form state
   const [formData, setFormData] = useState({
     paymentAmount: 0,
-    coveredMonths: [] as string[],
+    allocations: [] as DonationAllocation[],
     paymentDate: new Date().toISOString().split('T')[0],
     paymentMethod: 'Cash',
     note: ''
@@ -97,10 +97,7 @@ export function TeacherDonations() {
         const start = donor.joinMonth || `${new Date().getFullYear()}-01`;
         let endYear = new Date().getFullYear();
         if (editingCollection) {
-          editingCollection.coveredMonths.forEach(m => {
-            const y = parseInt(m.split('-')[0]);
-            if (y > endYear) endYear = y;
-          });
+          
         } else {
            endYear += 1;
         }
@@ -121,13 +118,26 @@ export function TeacherDonations() {
   }, [selectedDonor, donors, collectionsData, editingCollection]);
 
 
+  
+  useEffect(() => {
+    if (selectedDonor && formData.paymentAmount > 0 && !editingCollection) {
+      const donor = donors.find(d => d.donorId === selectedDonor);
+      if (donor) {
+        const alloc = calculateAllocation(donor, Number(formData.paymentAmount), collectionsData.filter(c => c.donorId === selectedDonor));
+        setFormData(prev => ({ ...prev, allocations: alloc }));
+      }
+    } else if (formData.paymentAmount <= 0) {
+      setFormData(prev => ({ ...prev, allocations: [] }));
+    }
+  }, [formData.paymentAmount, selectedDonor, donors, collectionsData, editingCollection]);
+
   const handleOpenModal = (col?: DonationCollection) => {
     if (col) {
       setEditingCollection(col);
       setSelectedDonor(col.donorId);
       setFormData({
         paymentAmount: col.paymentAmount,
-        coveredMonths: col.coveredMonths || [],
+        allocations: col.allocations || [],
         paymentDate: new Date(col.paymentDate).toISOString().split('T')[0],
         paymentMethod: col.paymentMethod || 'Cash',
         note: col.note || ''
@@ -137,7 +147,7 @@ export function TeacherDonations() {
       setSelectedDonor('');
       setFormData({
         paymentAmount: 0,
-        coveredMonths: [],
+        allocations: [],
         paymentDate: new Date().toISOString().split('T')[0],
         paymentMethod: 'Cash',
         note: ''
@@ -145,46 +155,7 @@ export function TeacherDonations() {
     }
     setIsModalOpen(true);
   };
-
-  const handleToggleMonth = (month: string) => {
-    setFormData(prev => {
-      const current = prev.coveredMonths;
-      let newMonths;
-      if (current.includes(month)) {
-        newMonths = current.filter(m => m !== month);
-      } else {
-        newMonths = [...current, month].sort();
-      }
-      
-      let sum = 0;
-      newMonths.forEach(m => {
-        const item = donorLedger.find(l => l.month === m);
-        if (item) {
-          sum += Math.max(0, item.expected - item.paid);
-        }
-      });
-
-      return { 
-        ...prev, 
-        coveredMonths: newMonths,
-        paymentAmount: sum > 0 || newMonths.length > 0 ? sum : 0
-      };
-    });
-  };
-  
-  const handleSelectAllDue = () => {
-    const dueMonths = donorLedger.filter(l => l.status === 'Due' || l.status === 'Partial');
-    let sum = 0;
-    const months = dueMonths.map(l => {
-      sum += Math.max(0, l.expected - l.paid);
-      return l.month;
-    });
-    setFormData(prev => ({
-      ...prev,
-      coveredMonths: months,
-      paymentAmount: sum
-    }));
-  };
+  // Removed handleSelectAllDue
 
   const handleVoid = async (col: DonationCollection) => {
     if (col.status === 'Approved') {
@@ -237,11 +208,13 @@ export function TeacherDonations() {
           teacherId,
           donorId: selectedDonor,
           paymentAmount: Number(formData.paymentAmount),
-          coveredMonths: formData.coveredMonths,
+          allocations: formData.allocations,
           paymentDate: paymentDateNum,
           paymentMethod: formData.paymentMethod,
           note: formData.note,
-          status: 'Pending',
+          status: settings?.donationMode === 'instant' ? 'Approved' : 'Pending',
+          source: 'TEACHER_ENTRY',
+          ...(settings?.donationMode === 'instant' ? { approvedAt: Date.now(), approvedBy: 'system' } : {}),
           submittedAt: Date.now(),
           createdAt: Date.now()
         };
@@ -312,7 +285,7 @@ export function TeacherDonations() {
                         {formatCurrency(c.paymentAmount, language)}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
-                        {formatMonths(c.coveredMonths || [], language)}
+                        {c.allocations ? c.allocations.map(a => `${a.month} (৳${a.amount})`).join(', ') : formatMonths(c.coveredMonths || [], language)}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -449,36 +422,30 @@ export function TeacherDonations() {
                         </div>
                       </div>
                     )}
+                    
                     <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Ledger / Months</h3>
-                      <Button type="button" variant="outline" size="sm" onClick={handleSelectAllDue} className="h-7 text-xs">Select All Due</Button>
+                      <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Automatic Allocation Preview</h3>
                     </div>
                     {selectedDonor ? (
                       <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                        {donorLedger.map((l) => (
-                          <div key={l.month} className="flex items-center justify-between bg-white dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800">
-                            <label className="flex items-center gap-2 cursor-pointer flex-1">
-                              <input 
-                                type="checkbox" 
-                                className="rounded text-indigo-600 focus:ring-indigo-500"
-                                checked={formData.coveredMonths.includes(l.month)}
-                                onChange={() => handleToggleMonth(l.month)}
-                              />
-                              <span className="text-sm font-medium">{l.month}</span>
-                            </label>
-                            <div className="text-right flex items-center gap-2">
-                              <span className="text-xs text-slate-500">{l.paid}/{l.expected}</span>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                l.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' :
-                                l.status === 'Partial' ? 'bg-amber-100 text-amber-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>{l.status}</span>
+                        {formData.allocations.length > 0 ? (
+                           formData.allocations.map(a => (
+                             <div key={a.month} className="flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded border border-indigo-100 dark:border-indigo-800">
+                               <span className="font-medium text-indigo-900 dark:text-indigo-200">{a.month}</span>
+                               <span className="font-bold text-indigo-700 dark:text-indigo-400">৳ {a.amount}</span>
+                             </div>
+                           ))
+                        ) : (
+                           <div className="text-sm text-slate-500 p-2">Enter amount to see allocation.</div>
+                        )}
+                        {formData.paymentAmount > 0 && formData.allocations.reduce((sum, a) => sum + a.amount, 0) < formData.paymentAmount && (
+                            <div className="text-xs text-amber-600 mt-2 bg-amber-50 p-2 rounded">
+                              Warning: Amount exceeds future expectations or cannot be fully allocated.
                             </div>
-                          </div>
-                        ))}
+                        )}
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-500 text-center py-8">Select a donor to view their ledger.</p>
+                      <p className="text-sm text-slate-500 text-center py-8">Select a donor to view allocations.</p>
                     )}
                   </div>
                 </div>
@@ -545,7 +512,7 @@ export function TeacherDonations() {
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-slate-500">{receiptLang === "en" ? "Covered Months:" : "প্রদত্ত মাস:"}</span>
-                  <span className="font-medium">{formatMonths(receiptModal.coveredMonths || [], receiptLang)}</span>
+                  <span className="font-medium">{receiptModal.allocations ? receiptModal.allocations.map(a => `${a.month} (৳${a.amount})`).join(', ') : formatMonths(receiptModal.coveredMonths || [], receiptLang)}</span>
                 </div>
               </div>
               

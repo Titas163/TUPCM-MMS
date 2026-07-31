@@ -68,6 +68,7 @@ export interface Subject {
   subjectName: string;
   subjectNameBn?: string;
   classId: string;
+  assignedTeacher?: string;
   status: 'active' | 'inactive';
 }
 
@@ -141,13 +142,19 @@ export interface Donor {
   updatedAt: number;
 }
 
+export interface DonationAllocation {
+  month: string;
+  amount: number;
+}
+
 export interface DonationCollection {
   collectionId: string;
   receiptNumber?: string;
   teacherId: string;
   donorId: string;
   paymentAmount: number;
-  coveredMonths: string[]; // e.g. "2026-07"
+  coveredMonths?: string[]; // Legacy
+  allocations?: DonationAllocation[]; // Replaces coveredMonths
   paymentDate: number; // For cash-flow
   paymentMethod: string;
   note?: string;
@@ -158,4 +165,5 @@ export interface DonationCollection {
   createdAt: number;
   updatedAt?: number;
   isDeleted?: boolean; // soft delete
+  source?: 'TEACHER_ENTRY' | 'MANUAL_ADMIN';
 }

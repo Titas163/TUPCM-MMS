@@ -215,7 +215,12 @@ export function Reports() {
         advanceAmount,
         partialAmount,
         teacherStats,
-        donorStats
+        donorStats,
+        reconciliation: {
+          teacherTotal: Object.values(teacherStats).reduce((a, b) => a + b, 0),
+          fundTotal: currentMonthCash,
+          matched: Object.values(teacherStats).reduce((a, b) => a + b, 0) === currentMonthCash
+        }
       });
       
       setReportData(null);

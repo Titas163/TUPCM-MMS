@@ -9,6 +9,8 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Search, CheckCircle, XCircle, Printer } from 'lucide-react';
 import { formatCurrency, formatDate, formatMonths } from '../../lib/utils';
+import { calculateAllocation } from '../../lib/donationUtils';
+import { addDoc } from 'firebase/firestore';
 import { useAppStore } from '../../store';
 
 export function AdminDonations() {
@@ -26,6 +28,17 @@ export function AdminDonations() {
 
   const [receiptModal, setReceiptModal] = useState<(DonationCollection & { donorName?: string, teacherName?: string }) | null>(null);
   const [receiptLang, setReceiptLang] = useState<'en'|'bn'>(language || 'bn');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCol, setEditingCol] = useState<DonationCollection | null>(null);
+  const [donorsList, setDonorsList] = useState<Donor[]>([]);
+  const [formData, setFormData] = useState({
+    donorId: '',
+    teacherId: '',
+    paymentAmount: 0,
+    paymentDate: new Date().toISOString().split('T')[0],
+    paymentMethod: 'Cash',
+    note: ''
+  });
 
   const fetchData = async () => {
     setLoading(true);
@@ -38,6 +51,7 @@ export function AdminDonations() {
       
       const teachers = teacherSnap.docs.map(t => ({ ...t.data(), teacherId: t.id } as Teacher));
       setTeachersList(teachers);
+      setDonorsList(donors);
 
 
       const q = query(collection(db, 'donationCollections'), orderBy('createdAt', 'desc'));
@@ -64,7 +78,83 @@ export function AdminDonations() {
     fetchData();
   }, []);
 
-  const handleApprove = async (id: string) => { {
+  const handleEdit = (c: any) => {
+    setEditingCol(c);
+    setFormData({
+      donorId: c.donorId,
+      teacherId: c.teacherId,
+      paymentAmount: c.paymentAmount,
+      paymentDate: new Date(c.paymentDate).toISOString().split('T')[0],
+      paymentMethod: c.paymentMethod,
+      note: c.note || ''
+    });
+    setIsModalOpen(true);
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.donorId || formData.paymentAmount <= 0) return;
+    try {
+      const isDuplicate = collectionsData.some(c =>
+        c.donorId === formData.donorId &&
+        c.paymentAmount === formData.paymentAmount &&
+        new Date(c.paymentDate).toISOString().split('T')[0] === formData.paymentDate &&
+        c.status !== 'Void' && !c.isDeleted
+      );
+      if (isDuplicate) {
+        if (!window.confirm("Possible Duplicate Payment detected. Proceed?")) {
+          return;
+        }
+      }
+      
+      const donor = donorsList.find(d => d.donorId === formData.donorId);
+      if (!donor) return;
+      const alloc = calculateAllocation(donor, Number(formData.paymentAmount), collectionsData.filter(c => c.donorId === formData.donorId));
+      
+      
+      if (editingCol) {
+        if (!window.confirm("You are modifying an existing historical transaction. Are you sure you want to correct this? Audit history will be updated.")) return;
+        await updateDoc(doc(db, 'donationCollections', editingCol.collectionId), {
+          teacherId: formData.teacherId || donor.assignedTeacher,
+          donorId: formData.donorId,
+          paymentAmount: Number(formData.paymentAmount),
+          allocations: alloc,
+          paymentDate: new Date(formData.paymentDate).getTime(),
+          paymentMethod: formData.paymentMethod,
+          note: formData.note,
+          updatedAt: Date.now(),
+          correctedBy: user?.uid,
+          correctedAt: Date.now(),
+          previousAmount: editingCol.paymentAmount // Basic audit
+        });
+      } else {
+        const newCol: Omit<DonationCollection, 'collectionId'> = {
+            receiptNumber: 'REC-' + new Date().getFullYear() + (new Date().getMonth()+1).toString().padStart(2,'0') + '-' + Math.floor(Math.random() * 9000 + 1000),
+            teacherId: formData.teacherId || donor.assignedTeacher,
+            donorId: formData.donorId,
+            paymentAmount: Number(formData.paymentAmount),
+            allocations: alloc,
+            paymentDate: new Date(formData.paymentDate).getTime(),
+            paymentMethod: formData.paymentMethod,
+            note: formData.note,
+            status: 'Approved',
+            source: 'MANUAL_ADMIN',
+            approvedAt: Date.now(),
+            approvedBy: user?.uid || 'admin',
+            submittedAt: Date.now(),
+            createdAt: Date.now()
+        };
+        await addDoc(collection(db, 'donationCollections'), newCol);
+      }
+      setIsModalOpen(false); setEditingCol(null);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert("Error adding entry");
+    }
+  };
+
+  const handleApprove = async (id: string) => {
       try {
         await updateDoc(doc(db, 'donationCollections', id), {
           status: 'Approved',
@@ -74,18 +164,27 @@ export function AdminDonations() {
         });
         fetchData();
       } catch (error: any) { alert("Error approving: " + error.message); console.error(error); }
-    }
   };
 
-  const handleVoid = async (id: string) => { {
+  const handleVoid = async (id: string) => {
+    const reason = prompt("Please enter a reason for voiding this transaction:");
+    if (reason === null || reason.trim() === '') {
+      alert("Void cancelled. Reason is required.");
+      return;
+    }
+    if (window.confirm("Are you sure you want to VOID this transaction? This action will remove it from Fund Income.")) {
       try {
         await updateDoc(doc(db, 'donationCollections', id), {
           status: 'Void',
-          isDeleted: true,
+          voidReason: reason,
+          voidAt: Date.now(),
+          voidBy: user?.uid || 'unknown',
           updatedAt: Date.now()
         });
         fetchData();
-      } catch (error: any) { alert("Error voiding: " + error.message); console.error(error); }
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -205,7 +304,7 @@ export function AdminDonations() {
                         {formatCurrency(c.paymentAmount, language)}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
-                         {formatMonths(c.coveredMonths || [], language)}
+                         {c.allocations ? c.allocations.map(a => `${a.month} (৳${a.amount})`).join(', ') : formatMonths(c.coveredMonths || [], language)}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -238,6 +337,14 @@ export function AdminDonations() {
                                 onClick={() => handleVoid(c.collectionId)}
                               >
                                 Void
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 ml-2"
+                                onClick={() => handleEdit(c)}
+                              >
+                                Edit
                               </Button>
                             </>
                           )}
@@ -310,7 +417,7 @@ export function AdminDonations() {
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-slate-500">{receiptLang === "en" ? "Covered Months:" : "প্রদত্ত মাস:"}</span>
-                  <span className="font-medium">{formatMonths(receiptModal.coveredMonths || [], receiptLang)}</span>
+                  <span className="font-medium">{receiptModal.allocations ? receiptModal.allocations.map(a => `${a.month} (৳${a.amount})`).join(', ') : formatMonths(receiptModal.coveredMonths || [], receiptLang)}</span>
                 </div>
               </div>
               
@@ -342,6 +449,47 @@ export function AdminDonations() {
                   <Printer className="w-4 h-4" /> Print
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <Card className="w-full max-w-md shadow-2xl border-none">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800">
+              <CardTitle>{editingCol ? 'Correct Transaction' : 'Manual Collection Entry'}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Donor</label>
+                  <Select required value={formData.donorId} onChange={e => setFormData({...formData, donorId: e.target.value})}>
+                    <option value="">Select Donor</option>
+                    {donorsList.map(d => <option key={d.donorId} value={d.donorId}>{d.donorName}</option>)}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Amount (৳)</label>
+                  <Input required type="number" min="1" value={formData.paymentAmount || ''} onChange={e => setFormData({...formData, paymentAmount: Number(e.target.value)})} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Date</label>
+                  <Input required type="date" value={formData.paymentDate} onChange={e => setFormData({...formData, paymentDate: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Payment Method</label>
+                  <Select required value={formData.paymentMethod} onChange={e => setFormData({...formData, paymentMethod: e.target.value})}>
+                    <option value="Cash">Cash</option>
+                    <option value="Bkash">Bkash</option>
+                    <option value="Bank">Bank Transfer</option>
+                  </Select>
+                </div>
+                <div className="pt-4 flex gap-3 justify-end">
+                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                  <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">{editingCol ? 'Confirm Correction' : 'Save Approved Entry'}</Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
         </div>
