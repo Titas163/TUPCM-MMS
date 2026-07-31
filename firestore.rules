@@ -50,7 +50,7 @@ service cloud.firestore {
     match /donationCollections/{collectionId} {
       allow read: if isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-      allow update: if isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid && resource.data.status == 'Draft');
+      allow update: if isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid && resource.data.status == 'Pending');
       allow delete: if isAdmin();
     }
 

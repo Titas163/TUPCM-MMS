@@ -182,6 +182,7 @@ export function TeacherDonations() {
         fetchData();
       } catch (err) {
         console.error(err);
+        alert("Error: " + (err as any).message);
       }
     }
   };
@@ -249,6 +250,7 @@ export function TeacherDonations() {
       fetchData();
     } catch (error) {
       console.error("Error saving donation", error);
+      alert("Error saving donation: " + (error as any).message);
     }
   };
 
