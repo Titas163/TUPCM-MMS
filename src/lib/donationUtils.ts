@@ -170,10 +170,8 @@ export function calculateDonorSummary(donor: Donor, collections: DonationCollect
   
   fullLedger.forEach(l => {
     totalPaid += l.paid;
-    if (l.month <= currentMonthStr) {
-      if (l.expected > l.paid) {
-        totalDue += (l.expected - l.paid);
-      }
+    if (l.expected > l.paid) {
+      totalDue += (l.expected - l.paid);
     }
     
     // Advance is strictly the amount paid BEYOND the expected amount for ANY month
