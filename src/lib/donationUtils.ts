@@ -109,10 +109,12 @@ export function generateLedger(
     const paid = paidPerMonth[curr] || 0;
     
     let status: 'Paid' | 'Partial' | 'Due' | 'Advance' = 'Due';
-    if (paid >= expected) {
-      status = curr > getCurrentMonthStr() ? 'Advance' : 'Paid';
+    if (paid > expected) {
+      status = 'Advance';
+    } else if (paid === expected) {
+      status = 'Paid';
     } else if (paid > 0) {
-      status = curr > getCurrentMonthStr() ? 'Advance' : 'Partial';
+      status = 'Partial';
     }
     
     ledger.push({
@@ -172,8 +174,11 @@ export function calculateDonorSummary(donor: Donor, collections: DonationCollect
       if (l.expected > l.paid) {
         totalDue += (l.expected - l.paid);
       }
-    } else {
-      totalAdvance += l.paid;
+    }
+    
+    // Advance is strictly the amount paid BEYOND the expected amount for ANY month
+    if (l.paid > l.expected) {
+      totalAdvance += (l.paid - l.expected);
     }
   });
   
