@@ -10,7 +10,7 @@ import { Select } from '../../components/ui/Select';
 import { Search, CheckCircle, XCircle, Printer } from 'lucide-react';
 import { formatCurrency, formatDate, formatMonths } from '../../lib/utils';
 import { calculateAllocation } from '../../lib/donationUtils';
-import { addDoc } from 'firebase/firestore';
+import { addDoc, where, deleteDoc } from 'firebase/firestore';
 import { useAppStore } from '../../store';
 
 export function AdminDonations() {
@@ -167,24 +167,36 @@ export function AdminDonations() {
       } catch (error: any) { alert("Error approving: " + error.message); console.error(error); }
   };
 
-  const handleVoid = async (id: string) => {
-    const reason = prompt("Please enter a reason for voiding this transaction:");
+  const handleVoid = async (id: string, currentStatus: string) => {
+    const reason = window.prompt("Please enter a reason for voiding this transaction:");
     if (reason === null || reason.trim() === '') {
       alert("Void cancelled. Reason is required.");
       return;
     }
-    if (window.confirm("Are you sure you want to VOID this transaction? This action will remove it from Fund Income.")) {
+    if (window.confirm("Are you sure you want to VOID this transaction? If it was approved, this will remove it from Fund Income.")) {
       try {
         await updateDoc(doc(db, 'donationCollections', id), {
           status: 'Void',
           voidReason: reason,
-          voidAt: Date.now(),
-          voidBy: user?.uid || 'unknown',
+          voidedAt: Date.now(),
+          voidedBy: user?.uid || 'unknown',
           updatedAt: Date.now()
         });
+        
+        // If it was already approved, we need to remove the associated transaction
+        if (currentStatus === 'Approved') {
+          const q = query(collection(db, 'transactions'), where('referenceId', '==', id));
+          const snapshot = await getDocs(q);
+          for (const d of snapshot.docs) {
+            await deleteDoc(doc(db, 'transactions', d.id));
+          }
+        }
+        
         fetchData();
-      } catch (err) {
+        alert("Transaction voided successfully.");
+      } catch (err: any) {
         console.error(err);
+        alert("Error voiding: " + err.message);
       }
     }
   };
@@ -335,7 +347,7 @@ export function AdminDonations() {
                                 variant="outline" 
                                 size="sm"
                                 className="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                onClick={() => handleVoid(c.collectionId)}
+                                onClick={() => handleVoid(c.collectionId, c.status)}
                               >
                                 Void
                               </Button>
@@ -354,7 +366,7 @@ export function AdminDonations() {
                                 variant="outline" 
                                 size="sm"
                                 className="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                onClick={() => handleVoid(c.collectionId)}
+                                onClick={() => handleVoid(c.collectionId, c.status)}
                               >
                                 Void
                               </Button>
