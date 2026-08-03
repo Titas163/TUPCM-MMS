@@ -112,9 +112,16 @@ export function Donors() {
     try {
       const numAmount = Number(formData.monthlyDonation);
       if (editingDonor) {
-        let newHistory = editingDonor.amountHistory || [];
+        let newHistory = [...(editingDonor.amountHistory || [])];
         // If amount changed, add to history
         if (editingDonor.monthlyDonation !== numAmount) {
+          // Fallback: If no history exists, ensure the original amount is recorded from their start month
+          if (newHistory.length === 0) {
+            newHistory.push({
+              amount: editingDonor.monthlyDonation,
+              effectiveFromMonth: editingDonor.joinMonth || '2000-01'
+            });
+          }
           // Check if there is already an entry for this month
           const existingIdx = newHistory.findIndex(h => h.effectiveFromMonth === formData.effectiveFromMonth);
           if (existingIdx >= 0) {
@@ -148,10 +155,10 @@ export function Donors() {
           monthlyDonation: numAmount,
           assignedTeacher: formData.assignedTeacher,
           status: formData.status,
-          joinMonth: formData.effectiveFromMonth,
+          joinMonth: formData.joinMonth,
           amountHistory: [{
             amount: numAmount,
-            effectiveFromMonth: formData.effectiveFromMonth
+            effectiveFromMonth: formData.joinMonth
           }],
           createdAt: Date.now(),
           updatedAt: Date.now()
@@ -330,7 +337,7 @@ export function Donors() {
                     />
                     <p className="text-xs text-slate-500">When the donor started.</p>
                   </div>
-                  {(!editingDonor || editingDonor.monthlyDonation !== Number(formData.monthlyDonation)) && (
+                  {(editingDonor && editingDonor.monthlyDonation !== Number(formData.monthlyDonation)) && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-indigo-600 dark:text-indigo-400">New Amount Effective Month</label>
                       <Input 

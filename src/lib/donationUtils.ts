@@ -14,12 +14,13 @@ export function getCurrentMonthStr() {
 
 export function getExpectedAmount(donor: Donor, month: string) {
   const history = [...(donor.amountHistory || [])].sort((a, b) => a.effectiveFromMonth.localeCompare(b.effectiveFromMonth));
-  let expected = donor.monthlyDonation; // default
   if (history.length > 0) {
     const applicable = history.slice().reverse().find(h => h.effectiveFromMonth <= month);
-    if (applicable) expected = applicable.amount;
+    if (applicable) return applicable.amount;
+    // If month is before the first recorded history entry, assume the earliest known amount
+    return history[0].amount;
   }
-  return expected;
+  return donor.monthlyDonation;
 }
 
 export function calculateAllocation(
