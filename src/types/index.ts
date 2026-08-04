@@ -150,6 +150,7 @@ export interface DonationAllocation {
 export interface DonationCollection {
   collectionId: string;
   receiptNumber?: string;
+  paperReceiptNo?: string;
   teacherId: string;
   donorId: string;
   paymentAmount: number;

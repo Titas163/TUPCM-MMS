@@ -244,7 +244,7 @@ export function DonorDetailsView({ donor, onBack, readOnly = false }: Props) {
                                   <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-800 text-sm">
                                     <div className="flex flex-col">
                                       <span className="font-medium text-slate-900 dark:text-white">
-                                        Receipt: {p.col.receiptNumber}
+                                        Receipt: {p.col.receiptNumber} {p.col.paperReceiptNo ? `(Paper: ${p.col.paperReceiptNo})` : ''}
                                       </span>
                                       <span className="text-xs text-slate-500">
                                         Paid on {formatDate(p.col.paymentDate, language)}
@@ -308,7 +308,10 @@ export function DonorDetailsView({ donor, onBack, readOnly = false }: Props) {
                         onClick={() => setExpandedPayment(expandedPayment === c.collectionId ? null : c.collectionId)}
                       >
                         <td className="px-4 py-3 whitespace-nowrap">{formatDate(c.paymentDate, language)}</td>
-                        <td className="px-4 py-3 font-medium">{c.receiptNumber}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium">{c.receiptNumber}</div>
+                          {c.paperReceiptNo && <div className="text-xs text-slate-500">Paper: {c.paperReceiptNo}</div>}
+                        </td>
                         <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">{formatCurrency(c.paymentAmount, language)}</td>
                         <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{c.paymentMethod}</td>
                         <td className="px-4 py-3"><StatusBadge status={c.status} /></td>

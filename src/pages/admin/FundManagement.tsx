@@ -23,6 +23,7 @@ export interface Transaction {
   recordedBy: string;
   isDonation?: boolean; // flag for auto-generated transactions from donations
   receiptNumber?: string;
+  paperReceiptNo?: string;
 }
 
 export function FundManagement() {
@@ -65,7 +66,8 @@ export function FundManagement() {
           description: `Donation via ${d.paymentMethod} (Allocations: ${d.allocations ? d.allocations.map(a => a.month).join(', ') : (d.coveredMonths ? d.coveredMonths.join(', ') : 'N/A')})`,
           recordedBy: d.teacherId,
           isDonation: true,
-          receiptNumber: d.receiptNumber
+          receiptNumber: d.receiptNumber,
+          paperReceiptNo: d.paperReceiptNo
         };
       });
 
@@ -147,7 +149,8 @@ export function FundManagement() {
   const filtered = transactions.filter(t => 
     t.description.toLowerCase().includes(search.toLowerCase()) || 
     t.category.toLowerCase().includes(search.toLowerCase()) ||
-    t.receiptNumber?.toLowerCase().includes(search.toLowerCase())
+    t.receiptNumber?.toLowerCase().includes(search.toLowerCase()) ||
+    t.paperReceiptNo?.toLowerCase().includes(search.toLowerCase())
   );
 
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
@@ -260,10 +263,15 @@ export function FundManagement() {
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
                         {trx.isDonation ? (
-                           <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-medium">
-                             <FileText className="w-3.5 h-3.5" />
-                             {trx.receiptNumber}
-                           </span>
+                           <div className="flex flex-col">
+                             <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-medium">
+                               <FileText className="w-3.5 h-3.5" />
+                               {trx.receiptNumber}
+                             </span>
+                             {trx.paperReceiptNo && (
+                               <span className="text-xs text-slate-500 mt-0.5">Paper: {trx.paperReceiptNo}</span>
+                             )}
+                           </div>
                         ) : (
                           trx.category
                         )}

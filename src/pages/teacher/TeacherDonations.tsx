@@ -50,7 +50,8 @@ export function TeacherDonations() {
     allocations: [] as DonationAllocation[],
     paymentDate: new Date().toISOString().split('T')[0],
     paymentMethod: 'Cash',
-    note: ''
+    note: '',
+    paperReceiptNo: ''
   });
 
   const fetchData = async () => {
@@ -144,7 +145,8 @@ export function TeacherDonations() {
         allocations: col.allocations || [],
         paymentDate: new Date(col.paymentDate).toISOString().split('T')[0],
         paymentMethod: col.paymentMethod || 'Cash',
-        note: col.note || ''
+        note: col.note || '',
+        paperReceiptNo: col.paperReceiptNo || ''
       });
     } else {
       setEditingCollection(null);
@@ -154,7 +156,8 @@ export function TeacherDonations() {
         allocations: [],
         paymentDate: new Date().toISOString().split('T')[0],
         paymentMethod: 'Cash',
-        note: ''
+        note: '',
+        paperReceiptNo: ''
       });
     }
     setIsModalOpen(true);
@@ -192,6 +195,19 @@ export function TeacherDonations() {
     e.preventDefault();
     if (!selectedDonor) return;
     
+    if (formData.paperReceiptNo) {
+      const trimmedReceiptNo = formData.paperReceiptNo.trim();
+      const isPaperReceiptDuplicate = collectionsData.some(c => 
+        c.paperReceiptNo === trimmedReceiptNo && 
+        c.status !== 'Void' && !c.isDeleted &&
+        c.collectionId !== (editingCollection?.collectionId || '')
+      );
+      if (isPaperReceiptDuplicate) {
+        alert("This paper receipt number has already been used.");
+        return;
+      }
+    }
+
     // Duplicate check
     const isDuplicate = collectionsData.some(c => 
       c.donorId === selectedDonor &&
@@ -224,6 +240,7 @@ export function TeacherDonations() {
           paymentAmount: Number(formData.paymentAmount),
           allocations: updatedAllocations,
           paymentDate: paymentDateNum,
+          paperReceiptNo: formData.paperReceiptNo ? formData.paperReceiptNo.trim() : '',
           updatedAt: Date.now(),
           previousAmount: editingCollection.paymentAmount,
           correctedBy: user?.uid || 'teacher',
@@ -238,6 +255,7 @@ export function TeacherDonations() {
           allocations: formData.allocations,
           paymentDate: paymentDateNum,
           paymentMethod: formData.paymentMethod,
+          paperReceiptNo: formData.paperReceiptNo ? formData.paperReceiptNo.trim() : '',
           note: formData.note,
           status: settings?.donationMode === 'instant' ? 'Approved' : 'Pending',
           source: 'TEACHER_ENTRY',
@@ -255,7 +273,7 @@ export function TeacherDonations() {
     }
   };
 
-  const filteredCols = collectionsData.filter(c => !c.isDeleted && (search === '' || c.receiptNumber?.toLowerCase().includes(search.toLowerCase()) || donorMap[c.donorId]?.donorName.toLowerCase().includes(search.toLowerCase())));
+  const filteredCols = collectionsData.filter(c => !c.isDeleted && (search === '' || c.receiptNumber?.toLowerCase().includes(search.toLowerCase()) || c.paperReceiptNo?.toLowerCase().includes(search.toLowerCase()) || donorMap[c.donorId]?.donorName.toLowerCase().includes(search.toLowerCase())));
   const filteredDonors = donors.filter(d => 
     search === '' || 
     d.donorName.toLowerCase().includes(search.toLowerCase()) || 
@@ -578,6 +596,17 @@ export function TeacherDonations() {
                     </div>
                     
                     <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Paper Receipt No. {formData.paymentMethod === 'Cash' && <span className="text-red-500">*</span>}</label>
+                      <Input 
+                        type="text"
+                        required={formData.paymentMethod === 'Cash'}
+                        value={formData.paperReceiptNo}
+                        onChange={e => setFormData({...formData, paperReceiptNo: e.target.value})}
+                        placeholder="e.g. 00125"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
                       <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Note</label>
                       <Input 
                         value={formData.note}
@@ -700,6 +729,10 @@ export function TeacherDonations() {
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-slate-500">{receiptLang === "en" ? "Payment Method:" : "পেমেন্ট মাধ্যম:"}</span>
                   <span className="font-medium">{receiptModal.paymentMethod}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-slate-500">{receiptLang === "en" ? "Paper Receipt:" : "রসিদ নং:"}</span>
+                  <span className="font-medium">{receiptModal.paperReceiptNo || '—'}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-slate-500">{receiptLang === "en" ? "Covered Months:" : "প্রদত্ত মাস:"}</span>

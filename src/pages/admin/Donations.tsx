@@ -37,7 +37,8 @@ export function AdminDonations() {
     paymentAmount: 0,
     paymentDate: new Date().toISOString().split('T')[0],
     paymentMethod: 'Cash',
-    note: ''
+    note: '',
+    paperReceiptNo: ''
   });
 
   const fetchData = async () => {
@@ -86,7 +87,8 @@ export function AdminDonations() {
       paymentAmount: c.paymentAmount,
       paymentDate: new Date(c.paymentDate).toISOString().split('T')[0],
       paymentMethod: c.paymentMethod,
-      note: c.note || ''
+      note: c.note || '',
+      paperReceiptNo: c.paperReceiptNo || ''
     });
     setIsModalOpen(true);
   };
@@ -95,6 +97,19 @@ export function AdminDonations() {
     e.preventDefault();
     if (!formData.donorId || formData.paymentAmount <= 0) return;
     try {
+      if (formData.paperReceiptNo) {
+      const trimmedReceiptNo = formData.paperReceiptNo.trim();
+      const isPaperReceiptDuplicate = collectionsData.some(c => 
+        c.paperReceiptNo === trimmedReceiptNo && 
+        c.status !== 'Void' && !c.isDeleted &&
+        c.collectionId !== (editingCol?.collectionId || '')
+      );
+      if (isPaperReceiptDuplicate) {
+        alert("This paper receipt number has already been used.");
+        return;
+      }
+    }
+
       const isDuplicate = collectionsData.some(c =>
         c.donorId === formData.donorId &&
         c.paymentAmount === formData.paymentAmount &&
@@ -122,6 +137,7 @@ export function AdminDonations() {
           allocations: alloc,
           paymentDate: new Date(formData.paymentDate).getTime(),
           paymentMethod: formData.paymentMethod,
+          paperReceiptNo: formData.paperReceiptNo ? formData.paperReceiptNo.trim() : '',
           note: formData.note,
           updatedAt: Date.now(),
           correctedBy: user?.uid,
@@ -137,6 +153,7 @@ export function AdminDonations() {
             allocations: alloc,
             paymentDate: new Date(formData.paymentDate).getTime(),
             paymentMethod: formData.paymentMethod,
+            paperReceiptNo: formData.paperReceiptNo ? formData.paperReceiptNo.trim() : '',
             note: formData.note,
             status: 'Approved',
             source: 'MANUAL_ADMIN',
@@ -489,6 +506,10 @@ export function AdminDonations() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Date</label>
                   <Input required type="date" value={formData.paymentDate} onChange={e => setFormData({...formData, paymentDate: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Paper Receipt No. {formData.paymentMethod === 'Cash' && <span className="text-red-500">*</span>}</label>
+                  <Input type="text" required={formData.paymentMethod === 'Cash'} value={formData.paperReceiptNo} onChange={e => setFormData({...formData, paperReceiptNo: e.target.value})} placeholder="e.g. 00125" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Payment Method</label>
