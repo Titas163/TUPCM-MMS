@@ -14,8 +14,9 @@ import { useAppStore } from '../../store';
 import { generateLedger, MonthLedger, calculateDonorSummary, DonorSummary, calculateAllocation, getCurrentMonthStr } from '../../lib/donationUtils';
 
 // Helper to generate a sequential or random receipt number
-const generateReceiptNumber = () => {
-  return `REC-${new Date().getFullYear()}${(new Date().getMonth()+1).toString().padStart(2,'0')}-${Math.floor(Math.random() * 9000 + 1000)}`;
+const generateReceiptNumber = (paymentDateStr: string) => {
+  const d = new Date(paymentDateStr);
+  return `REC-${d.getFullYear()}${(d.getMonth()+1).toString().padStart(2,'0')}-${Math.floor(Math.random() * 9000 + 1000)}`;
 };
 
 export function TeacherDonations() {
@@ -230,7 +231,7 @@ export function TeacherDonations() {
         });
       } else {
         const newCol: Omit<DonationCollection, 'collectionId'> = {
-          receiptNumber: generateReceiptNumber(),
+          receiptNumber: generateReceiptNumber(formData.paymentDate),
           teacherId,
           donorId: selectedDonor,
           paymentAmount: Number(formData.paymentAmount),

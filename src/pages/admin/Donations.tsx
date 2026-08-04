@@ -110,7 +110,7 @@ export function AdminDonations() {
       
       const donor = donorsList.find(d => d.donorId === formData.donorId);
       if (!donor) return;
-      const alloc = calculateAllocation(donor, Number(formData.paymentAmount), collectionsData.filter(c => c.donorId === formData.donorId));
+      const alloc = calculateAllocation(donor, Number(formData.paymentAmount), collectionsData.filter(c => c.donorId === formData.donorId && c.collectionId !== (editingCol?.collectionId || '')));
       
       
       if (editingCol) {
@@ -130,7 +130,7 @@ export function AdminDonations() {
         });
       } else {
         const newCol: Omit<DonationCollection, 'collectionId'> = {
-            receiptNumber: 'REC-' + new Date().getFullYear() + (new Date().getMonth()+1).toString().padStart(2,'0') + '-' + Math.floor(Math.random() * 9000 + 1000),
+            receiptNumber: 'REC-' + new Date(formData.paymentDate).getFullYear() + (new Date(formData.paymentDate).getMonth()+1).toString().padStart(2,'0') + '-' + Math.floor(Math.random() * 9000 + 1000),
             teacherId: formData.teacherId || donor.assignedTeacher,
             donorId: formData.donorId,
             paymentAmount: Number(formData.paymentAmount),
